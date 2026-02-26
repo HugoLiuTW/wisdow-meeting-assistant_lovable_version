@@ -2,88 +2,61 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 14 10% 10%;
+    /* Aurora Deep Dark Theme */
+    --background: 230 45% 7%;
+    --foreground: 200 100% 96%;
 
-    --surface: 240 5% 96%;
-    --surface-border: 220 13% 90%;
+    --surface: 228 40% 11%;
+    --surface-border: 220 30% 18%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 14 10% 10%;
+    --card: 228 40% 10%;
+    --card-foreground: 200 100% 96%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 14 10% 10%;
+    --popover: 228 40% 10%;
+    --popover-foreground: 200 100% 96%;
 
-    --primary: 14 10% 10%;
+    --primary: 270 80% 68%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 14 10% 10%;
+    --secondary: 228 35% 15%;
+    --secondary-foreground: 200 80% 90%;
 
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 57%;
+    --muted: 228 35% 13%;
+    --muted-foreground: 220 20% 55%;
 
-    --accent: 240 5% 90%;
-    --accent-foreground: 14 10% 10%;
+    --accent: 185 100% 50%;
+    --accent-foreground: 230 45% 7%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 14 10% 10%;
+    --border: 220 25% 18%;
+    --input: 220 25% 15%;
+    --ring: 270 80% 68%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 240 5% 97%;
-    --sidebar-foreground: 240 5% 26%;
-    --sidebar-primary: 14 10% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 5% 93%;
-    --sidebar-accent-foreground: 14 10% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 14 10% 10%;
-  }
+    --sidebar-background: 230 48% 6%;
+    --sidebar-foreground: 200 80% 88%;
+    --sidebar-primary: 270 80% 68%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 228 38% 12%;
+    --sidebar-accent-foreground: 200 80% 90%;
+    --sidebar-border: 220 25% 14%;
+    --sidebar-ring: 270 80% 68%;
 
-  .dark {
-    --background: 14 10% 7%;
-    --foreground: 0 0% 98%;
+    /* Aurora glow variables */
+    --glow-cyan: 0 0 24px rgba(0, 245, 255, 0.35), 0 0 48px rgba(0, 245, 255, 0.15);
+    --glow-purple: 0 0 24px rgba(123, 47, 247, 0.45), 0 0 60px rgba(123, 47, 247, 0.2);
+    --glow-md: 0 0 32px rgba(0, 212, 255, 0.25), 0 0 64px rgba(123, 47, 247, 0.15);
 
-    --card: 14 10% 10%;
-    --card-foreground: 0 0% 98%;
-
-    --popover: 14 10% 10%;
-    --popover-foreground: 0 0% 98%;
-
-    --primary: 0 0% 98%;
-    --primary-foreground: 14 10% 10%;
-
-    --secondary: 14 10% 15%;
-    --secondary-foreground: 0 0% 98%;
-
-    --muted: 14 10% 15%;
-    --muted-foreground: 0 0% 65%;
-
-    --accent: 14 10% 15%;
-    --accent-foreground: 0 0% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 14 10% 18%;
-    --input: 14 10% 18%;
-    --ring: 0 0% 83.9%;
-
-    --sidebar-background: 14 10% 8%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 0 0% 98%;
-    --sidebar-primary-foreground: 14 10% 10%;
-    --sidebar-accent: 14 10% 13%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 14 10% 18%;
-    --sidebar-ring: 0 0% 83.9%;
+    --aurora-gradient: linear-gradient(135deg, #00F5FF 0%, #7B2FF7 50%, #00F5FF 100%);
+    --aurora-border: rgba(0, 212, 255, 0.3);
+    --aurora-surface: rgba(0, 212, 255, 0.05);
   }
 }
 
@@ -94,31 +67,135 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background-image:
+      radial-gradient(ellipse at 20% 20%, rgba(0, 245, 255, 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(123, 47, 247, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 0%, rgba(0, 212, 255, 0.04) 0%, transparent 40%);
+    background-attachment: fixed;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 212, 255, 0.2);
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 212, 255, 0.4);
   }
 }
 
-/* Markdown content styling */
-.markdown-content h1 { @apply text-2xl font-extrabold tracking-tight mb-4 text-foreground; }
-.markdown-content h2 { @apply text-xl font-bold tracking-tight mb-3 mt-6 text-foreground; }
-.markdown-content h3 { @apply text-base font-bold mb-2 mt-4 text-foreground; }
-.markdown-content p { @apply text-sm leading-relaxed mb-2 text-foreground; }
-.markdown-content ul { @apply list-disc list-inside space-y-1 mb-3 text-sm text-foreground pl-2; }
-.markdown-content ol { @apply list-decimal list-inside space-y-1 mb-3 text-sm text-foreground pl-2; }
-.markdown-content strong { @apply font-bold text-foreground; }
+/* ─── Aurora Glass Utilities ─────────────────────────────────────────────────── */
+@layer utilities {
+  .aurora-glass {
+    background: rgba(10, 15, 40, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--aurora-border);
+  }
+
+  .aurora-glass-light {
+    background: rgba(0, 212, 255, 0.04);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 212, 255, 0.15);
+  }
+
+  .aurora-glow {
+    box-shadow: var(--glow-md);
+  }
+
+  .aurora-glow-cyan {
+    box-shadow: var(--glow-cyan);
+  }
+
+  .aurora-glow-purple {
+    box-shadow: var(--glow-purple);
+  }
+
+  .aurora-text-gradient {
+    background: var(--aurora-gradient);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: aurora-shift 4s ease infinite;
+  }
+
+  .aurora-border-gradient {
+    position: relative;
+  }
+
+  .aurora-border-gradient::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: var(--aurora-gradient);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+}
+
+/* ─── Animations ─────────────────────────────────────────────────────────────── */
+@keyframes aurora-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+/* ─── Markdown content styling ───────────────────────────────────────────────── */
+.markdown-content h1 { @apply text-2xl font-extrabold tracking-tighter mb-4; color: #00F5FF; }
+.markdown-content h2 { @apply text-xl font-bold tracking-tight mb-3 mt-6; color: rgba(0, 245, 255, 0.85); }
+.markdown-content h3 { @apply text-base font-bold mb-2 mt-4; color: rgba(0, 245, 255, 0.7); }
+.markdown-content p { @apply text-sm leading-relaxed mb-2; color: rgba(200, 240, 255, 0.85); }
+.markdown-content ul { @apply list-disc list-inside space-y-1 mb-3 text-sm pl-2; color: rgba(200, 240, 255, 0.8); }
+.markdown-content ol { @apply list-decimal list-inside space-y-1 mb-3 text-sm pl-2; color: rgba(200, 240, 255, 0.8); }
+.markdown-content strong { @apply font-bold; color: #00F5FF; }
+.markdown-content em { color: rgba(186, 130, 255, 0.9); font-style: italic; }
 
 .table-wrapper {
-  @apply overflow-x-auto my-4 rounded-2xl border border-border;
+  @apply overflow-x-auto my-4 rounded-2xl;
+  border: 1px solid rgba(0, 212, 255, 0.2);
 }
 .table-wrapper table {
   @apply w-full text-sm border-collapse;
 }
 .table-wrapper th {
-  @apply bg-muted text-muted-foreground font-bold px-4 py-3 text-left text-xs uppercase tracking-widest;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 12px 16px;
+  text-align: left;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: rgba(0, 212, 255, 0.08);
+  color: rgba(0, 245, 255, 0.7);
+  border-bottom: 1px solid rgba(0, 212, 255, 0.2);
 }
 .table-wrapper td {
-  @apply px-4 py-3 border-t border-border text-foreground;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(0, 212, 255, 0.08);
+  color: rgba(200, 240, 255, 0.8);
 }
 .table-wrapper tr:hover td {
-  @apply bg-muted/50;
+  background: rgba(0, 212, 255, 0.04);
 }
