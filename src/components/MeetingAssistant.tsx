@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Plus, Trash2, Edit3, ChevronRight, Clock, FileText,
+  Plus, Trash2, Edit3, ChevronRight, Clock,
   Upload, BrainCircuit, Settings, Menu, X, Copy, Check,
-  Loader2, Sparkles, Send, MessageSquare, KeyRound
+  Loader2, Sparkles, Send, MessageSquare
 } from 'lucide-react';
 import { MeetingRecord, MeetingMetadata, ChatMessage } from '../types';
 import { INSIGHT_MODULE_CONFIGS } from '../constants';
@@ -69,9 +69,6 @@ const MeetingAssistant: React.FC = () => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [chatInputs, setChatInputs] = useState<Record<string, string>>({});
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState('');
 
   useEffect(() => {
     const saved = localStorage.getItem('meeting_insights_history');
@@ -82,8 +79,6 @@ const MeetingAssistant: React.FC = () => {
         setRecords(migrated);
       } catch (e) { console.error('Failed to parse history', e); }
     }
-    const savedKey = localStorage.getItem('gemini_api_key');
-    if (savedKey) setApiKey(savedKey);
 
     const handleResize = () => setIsSidebarOpen(window.innerWidth > 1024);
     window.addEventListener('resize', handleResize);
@@ -95,14 +90,6 @@ const MeetingAssistant: React.FC = () => {
   }, [records]);
 
   const activeRecord = records.find(r => r.id === activeRecordId) || null;
-
-  const saveApiKey = () => {
-    if (!apiKeyInput.trim()) return;
-    setApiKey(apiKeyInput.trim());
-    localStorage.setItem('gemini_api_key', apiKeyInput.trim());
-    setShowApiKeyModal(false);
-    setApiKeyInput('');
-  };
 
   const createNewRecord = () => {
     const newRecord: MeetingRecord = {
@@ -154,13 +141,8 @@ const MeetingAssistant: React.FC = () => {
     });
   };
 
-  const requireApiKey = (): boolean => {
-    if (!apiKey) { setShowApiKeyModal(true); return false; }
-    return true;
-  };
-
   const runInitialAnalysis = async (moduleId: string) => {
-    if (!activeRecord?.correctedTranscript || !requireApiKey()) return;
+    if (!activeRecord?.correctedTranscript) return;
     const mId = moduleId as keyof typeof INSIGHT_MODULE_CONFIGS;
     const moduleConfig = INSIGHT_MODULE_CONFIGS[mId];
     if (!moduleConfig) return;
@@ -168,7 +150,7 @@ const MeetingAssistant: React.FC = () => {
     setIsLoading(true);
     setLoadingText(`正在共振解讀模組「${moduleConfig.name}」...`);
     try {
-      const result = await geminiService.analyzeTranscript(activeRecord.correctedTranscript, moduleConfig.prompt, [], apiKey);
+      const result = await geminiService.analyzeTranscript(activeRecord.correctedTranscript, moduleConfig.prompt, []);
       const firstMessage: ChatMessage = { role: 'model', text: result, timestamp: Date.now() };
       setRecords(records.map(r => r.id === activeRecordId ? {
         ...r,
@@ -185,7 +167,7 @@ const MeetingAssistant: React.FC = () => {
 
   const sendModuleChat = async (moduleId: string) => {
     const input = chatInputs[moduleId];
-    if (!activeRecord || !input?.trim() || isLoading || !requireApiKey()) return;
+    if (!activeRecord || !input?.trim() || isLoading) return;
 
     const mId = moduleId as keyof typeof INSIGHT_MODULE_CONFIGS;
     const moduleConfig = INSIGHT_MODULE_CONFIGS[mId];
@@ -204,8 +186,7 @@ const MeetingAssistant: React.FC = () => {
       const response = await geminiService.analyzeTranscript(
         activeRecord.correctedTranscript || '',
         moduleConfig.prompt,
-        updatedHistoryWithUser,
-        apiKey
+        updatedHistoryWithUser
       );
       const aiMsg: ChatMessage = { role: 'model', text: response, timestamp: Date.now() };
       setRecords(records.map(r => r.id === activeRecordId ? {
@@ -220,38 +201,6 @@ const MeetingAssistant: React.FC = () => {
 
   return (
     <div className="flex h-screen overflow-hidden relative bg-background">
-      {/* API Key Modal */}
-      {showApiKeyModal && (
-        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
-          <div className="bg-background rounded-3xl p-8 max-w-md w-full shadow-2xl border border-border">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-muted rounded-xl"><KeyRound size={20} className="text-foreground" /></div>
-              <h3 className="text-xl font-extrabold tracking-tight">設定 Gemini API Key</h3>
-            </div>
-            <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-              請輸入您的 Google Gemini API Key。金鑰將儲存於瀏覽器本機，不會上傳至任何伺服器。
-            </p>
-            <input
-              type="password"
-              value={apiKeyInput}
-              onChange={e => setApiKeyInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && saveApiKey()}
-              placeholder="AIza..."
-              className="w-full p-4 bg-muted border border-border rounded-2xl outline-none focus:ring-2 focus:ring-primary/30 text-sm mb-4 font-mono"
-              autoFocus
-            />
-            <div className="flex gap-3">
-              <button onClick={() => setShowApiKeyModal(false)} className="flex-1 py-3 rounded-2xl border border-border font-bold text-sm hover:bg-muted transition-all">
-                取消
-              </button>
-              <button onClick={saveApiKey} className="flex-1 py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-all">
-                儲存金鑰
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Sidebar overlay for mobile */}
       {isSidebarOpen && window.innerWidth < 1024 && (
         <div className="fixed inset-0 bg-foreground/10 backdrop-blur-sm z-40 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
@@ -268,16 +217,6 @@ const MeetingAssistant: React.FC = () => {
           </div>
           <button onClick={() => setIsSidebarOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
             <X size={20} />
-          </button>
-        </div>
-
-        <div className="px-6 mb-4">
-          <button
-            onClick={() => { setShowApiKeyModal(true); setApiKeyInput(apiKey); }}
-            className="w-full flex items-center gap-2 py-2.5 px-4 rounded-2xl border border-sidebar-border text-xs font-bold text-sidebar-foreground hover:bg-sidebar-accent transition-all"
-          >
-            <KeyRound size={14} />
-            {apiKey ? '已設定 API Key' : '設定 Gemini API Key'}
           </button>
         </div>
 
@@ -392,11 +331,10 @@ const MeetingAssistant: React.FC = () => {
                       <button
                         disabled={isLoading || !activeRecord.rawTranscript}
                         onClick={async () => {
-                          if (!requireApiKey()) return;
                           setIsLoading(true);
                           setLoadingText('引擎正在重構文本脈絡...');
                           try {
-                            const result = await geminiService.correctTranscript(activeRecord.rawTranscript, activeRecord.metadata, apiKey);
+                            const result = await geminiService.correctTranscript(activeRecord.rawTranscript, activeRecord.metadata);
                             setRecords(records.map(r => r.id === activeRecordId ? { ...r, correctedTranscript: result } : r));
                             setStep(2);
                           } catch (error: any) {
