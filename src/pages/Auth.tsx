@@ -65,20 +65,20 @@ const Auth: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-3.5">
           {mode === 'signup' && (
             <div className="space-y-1.5">
-              <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">顯示名稱</label>
+              <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">顯示名稱</label>
               <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
                 placeholder="您的名稱"
                 className="w-full p-3.5 rounded-xl text-sm ios-input text-foreground placeholder:text-muted-foreground/40" />
             </div>
           )}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">電子郵件</label>
+            <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">電子郵件</label>
             <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
               placeholder="your@email.com"
               className="w-full p-3.5 rounded-xl text-sm ios-input text-foreground placeholder:text-muted-foreground/40" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">密碼</label>
+            <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">密碼</label>
             <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
               placeholder="至少 6 位字元" minLength={6}
               className="w-full p-3.5 rounded-xl text-sm ios-input text-foreground placeholder:text-muted-foreground/40" />
