@@ -14,7 +14,159 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          module_version_id: string
+          role: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          module_version_id: string
+          role: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          module_version_id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_module_version_id_fkey"
+            columns: ["module_version_id"]
+            isOneToOne: false
+            referencedRelation: "module_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_records: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json
+          raw_transcript: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          raw_transcript?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          raw_transcript?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      module_versions: {
+        Row: {
+          created_at: string
+          id: string
+          module_id: string
+          record_id: string
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          module_id: string
+          record_id: string
+          version_number?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          module_id?: string
+          record_id?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_versions_record_id_fkey"
+            columns: ["record_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      transcript_versions: {
+        Row: {
+          corrected_transcript: string
+          correction_log: string | null
+          created_at: string
+          id: string
+          record_id: string
+          version_number: number
+        }
+        Insert: {
+          corrected_transcript: string
+          correction_log?: string | null
+          created_at?: string
+          id?: string
+          record_id: string
+          version_number?: number
+        }
+        Update: {
+          corrected_transcript?: string
+          correction_log?: string | null
+          created_at?: string
+          id?: string
+          record_id?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transcript_versions_record_id_fkey"
+            columns: ["record_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
