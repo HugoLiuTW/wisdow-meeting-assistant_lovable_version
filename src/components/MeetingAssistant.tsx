@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Plus, Trash2, Edit3, ChevronRight, Clock,
   Upload, BrainCircuit, Settings, Menu, X, Copy, Check,
-  Loader2, Sparkles, Send, MessageSquare, LogOut,
+  Loader2, Sparkles, Send, LogOut,
   ChevronLeft, History, Zap, AlertCircle
 } from 'lucide-react';
 import { MeetingMetadata, ChatMessage } from '../types';
@@ -76,21 +76,21 @@ const MarkdownRenderer = ({ text }: { text: string }) => {
 function VersionPaginator({ total, current, onChange }: { total: number; current: number; onChange: (v: number) => void }) {
   if (total <= 1) return null;
   return (
-    <div className="flex items-center gap-1.5 aurora-glass rounded-xl px-2 py-1">
+    <div className="flex items-center gap-1 ios-surface rounded-xl px-2 py-1">
       <button onClick={() => onChange(current - 1)} disabled={current <= 1}
-        className="p-1.5 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))] disabled:opacity-30 transition-colors">
+        className="p-1.5 rounded-lg text-muted-foreground hover:text-primary disabled:opacity-30 transition-colors">
         <ChevronLeft size={13} />
       </button>
       <div className="flex items-center gap-1">
         {Array.from({ length: total }, (_, i) => i + 1).map(v => (
           <button key={v} onClick={() => onChange(v)}
-            className={`w-6 h-6 rounded-lg text-[10px] font-bold transition-all ${v === current ? 'bg-[hsl(var(--primary))] text-white shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))]'}`}>
+            className={`w-6 h-6 rounded-lg text-[10px] font-semibold transition-all ${v === current ? 'bg-primary text-primary-foreground shadow-ios-sm' : 'text-muted-foreground hover:text-primary'}`}>
             {v}
           </button>
         ))}
       </div>
       <button onClick={() => onChange(current + 1)} disabled={current >= total}
-        className="p-1.5 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))] disabled:opacity-30 transition-colors">
+        className="p-1.5 rounded-lg text-muted-foreground hover:text-primary disabled:opacity-30 transition-colors">
         <ChevronRight size={13} />
       </button>
     </div>
@@ -109,15 +109,15 @@ function ProgressSteps({ step, label }: { step: 1 | 2 | 3; label: string }) {
       <div className="flex items-center gap-3">
         {steps.map((s, idx) => (
           <React.Fragment key={s.n}>
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${s.n === step ? 'aurora-glass-light text-[hsl(var(--accent))]' : 'text-[hsl(var(--muted-foreground))] opacity-40'}`}>
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${s.n === step ? 'bg-primary/10 text-primary' : 'text-muted-foreground opacity-40'}`}>
               {s.n === step && <Loader2 size={12} className="animate-spin" />}
               {s.label}
             </div>
-            {idx < 2 && <div className={`w-8 h-px transition-all ${s.n < step ? 'bg-[hsl(var(--accent))]' : 'bg-[hsl(var(--border))]'}`} />}
+            {idx < 2 && <div className={`w-8 h-px transition-all ${s.n < step ? 'bg-primary' : 'bg-border'}`} />}
           </React.Fragment>
         ))}
       </div>
-      <p className="text-sm font-medium text-[hsl(var(--muted-foreground))]">{label}</p>
+      <p className="text-sm font-medium text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -125,13 +125,13 @@ function ProgressSteps({ step, label }: { step: 1 | 2 | 3; label: string }) {
 // ─── Error Banner ─────────────────────────────────────────────────────────────
 function ErrorBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
   return (
-    <div className="flex items-start gap-3 p-4 rounded-2xl bg-[hsl(var(--destructive)/0.12)] border border-[hsl(var(--destructive)/0.3)] text-[hsl(var(--destructive))]">
-      <AlertCircle size={18} className="shrink-0 mt-0.5" />
+    <div className="flex items-start gap-3 p-4 rounded-2xl bg-destructive/8 border border-destructive/20 text-destructive">
+      <AlertCircle size={17} className="shrink-0 mt-0.5" />
       <div className="flex-1">
         <p className="text-sm font-semibold">發生錯誤</p>
-        <p className="text-xs mt-1 opacity-80">{message}</p>
+        <p className="text-xs mt-1 opacity-75">{message}</p>
       </div>
-      <button onClick={onDismiss} className="p-1 hover:opacity-60 transition-opacity"><X size={16} /></button>
+      <button onClick={onDismiss} className="p-1 hover:opacity-60 transition-opacity"><X size={15} /></button>
     </div>
   );
 }
@@ -150,6 +150,8 @@ const MeetingAssistant: React.FC = () => {
   const [chatInputs, setChatInputs] = useState<Record<string, string>>({});
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
+  // Active tab in step 3 (which module tab is selected)
+  const [activeModuleTab, setActiveModuleTab] = useState<string>('A');
 
   const [localMetadata, setLocalMetadata] = useState<MeetingMetadata>({ subject: '', keywords: '', speakers: '', terminology: '', length: '' });
   const [localTranscript, setLocalTranscript] = useState('');
@@ -234,6 +236,7 @@ const MeetingAssistant: React.FC = () => {
     setTranscriptVersions([]);
     setModuleVersionsMap({});
     setActiveModuleVersion({});
+    setActiveModuleTab('A');
     setErrorMsg(null);
     if (window.innerWidth < 1024) setIsSidebarOpen(false);
   };
@@ -419,65 +422,70 @@ const MeetingAssistant: React.FC = () => {
     }
   };
 
+  const moduleIds = Object.keys(INSIGHT_MODULE_CONFIGS) as Array<keyof typeof INSIGHT_MODULE_CONFIGS>;
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-screen overflow-hidden relative" style={{ background: 'hsl(var(--background))' }}>
+    <div className="flex h-screen overflow-hidden relative bg-background">
       {isSidebarOpen && window.innerWidth < 1024 && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
       )}
 
       {/* ── Sidebar ── */}
-      <aside className={`fixed lg:relative z-50 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] h-full overflow-hidden flex flex-col border-r ${isSidebarOpen ? 'w-[85vw] md:w-72' : 'w-0'}`}
-        style={{ background: 'hsl(var(--sidebar-background))', borderColor: 'hsl(var(--sidebar-border))' }}>
+      <aside className={`fixed lg:relative z-50 transition-all duration-300 ease-out h-full overflow-hidden flex flex-col border-r border-border ${isSidebarOpen ? 'w-[85vw] md:w-64' : 'w-0'}`}
+        style={{ background: 'hsl(var(--sidebar-background))' }}>
 
-        <div className="p-6 pb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl aurora-border-gradient" style={{ background: 'rgba(123, 47, 247, 0.15)' }}>
-              <BrainCircuit size={20} className="aurora-text-gradient" style={{ color: 'hsl(var(--accent))' }} />
+        <div className="p-5 pb-3 flex items-center justify-between border-b border-border">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-primary/10">
+              <BrainCircuit size={18} className="text-primary" />
             </div>
-            <h1 className="text-lg font-extrabold tracking-tighter aurora-text-gradient whitespace-nowrap">智會洞察</h1>
+            <h1 className="text-base font-bold tracking-tight text-foreground whitespace-nowrap">智會洞察</h1>
           </div>
-          <button onClick={() => setIsSidebarOpen(false)} className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"><X size={18} /></button>
+          <button onClick={() => setIsSidebarOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-lg hover:bg-muted">
+            <X size={16} />
+          </button>
         </div>
 
-        <button onClick={createNewRecord}
-          className="mx-4 mb-4 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl font-bold text-sm transition-all active:scale-95 aurora-border-gradient"
-          style={{ background: 'rgba(0, 245, 255, 0.1)', color: 'hsl(var(--accent))' }}>
-          <Plus size={16} />新增會議
-        </button>
+        <div className="p-3">
+          <button onClick={createNewRecord}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all active:scale-95 ios-btn-primary text-primary-foreground">
+            <Plus size={15} />新增會議
+          </button>
+        </div>
 
-        <div className="flex-1 overflow-y-auto px-3 space-y-0.5 pb-4">
-          <p className="text-[9px] font-bold tracking-widest uppercase px-3 mb-3" style={{ color: 'hsl(var(--muted-foreground))' }}>歷史記錄</p>
+        <div className="flex-1 overflow-y-auto px-2 pb-3">
+          <p className="text-[10px] font-semibold tracking-widest uppercase px-2 mb-2 mt-1 text-muted-foreground">歷史記錄</p>
           {records.map(r => (
             <div key={r.id}
               onClick={() => { setActiveRecordId(r.id); setStep(1); setErrorMsg(null); if (window.innerWidth < 1024) setIsSidebarOpen(false); }}
-              className={`group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all duration-200 ${activeRecordId === r.id ? 'aurora-glass-light' : 'hover:bg-[hsl(var(--sidebar-accent))]'}`}>
+              className={`group flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition-all duration-150 mb-0.5 ${activeRecordId === r.id ? 'bg-primary/10' : 'hover:bg-sidebar-accent'}`}>
               <div className="flex flex-col min-w-0 flex-1">
-                <span className={`truncate font-semibold text-sm ${activeRecordId === r.id ? 'text-[hsl(var(--accent))]' : 'text-[hsl(var(--sidebar-foreground))]'}`}>{r.title}</span>
-                <span className="text-[10px] flex items-center gap-1 mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                <span className={`truncate font-medium text-sm ${activeRecordId === r.id ? 'text-primary' : 'text-sidebar-foreground'}`}>{r.title}</span>
+                <span className="text-[10px] flex items-center gap-1 mt-0.5 text-muted-foreground">
                   <Clock size={9} /> {new Date(r.createdAt).toLocaleDateString()}
                 </span>
               </div>
-              <div className="flex items-center gap-0.5 lg:opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-                <button onClick={e => renameRecord(r.id, e)} className="p-1.5 hover:bg-[hsl(var(--sidebar-accent))] rounded-lg transition-colors" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                  <Edit3 size={13} />
+              <div className="flex items-center gap-0.5 lg:opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                <button onClick={e => renameRecord(r.id, e)} className="p-1.5 hover:bg-sidebar-accent rounded-lg transition-colors text-muted-foreground">
+                  <Edit3 size={12} />
                 </button>
-                <button onClick={e => deleteRecord(r.id, e)} className="p-1.5 rounded-lg transition-colors hover:text-[hsl(var(--destructive))]" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                  <Trash2 size={13} />
+                <button onClick={e => deleteRecord(r.id, e)} className="p-1.5 rounded-lg transition-colors text-muted-foreground hover:text-destructive">
+                  <Trash2 size={12} />
                 </button>
               </div>
             </div>
           ))}
           {records.length === 0 && (
-            <p className="text-xs text-center py-8" style={{ color: 'hsl(var(--muted-foreground))' }}>尚無會議記錄</p>
+            <p className="text-xs text-center py-8 text-muted-foreground">尚無會議記錄</p>
           )}
         </div>
 
-        <div className="p-4 border-t" style={{ borderColor: 'hsl(var(--sidebar-border))' }}>
-          <div className="flex items-center justify-between">
-            <p className="text-xs truncate max-w-[160px]" style={{ color: 'hsl(var(--muted-foreground))' }}>{user?.email}</p>
-            <button onClick={signOut} className="p-2 rounded-xl transition-all hover:text-[hsl(var(--destructive))]" style={{ color: 'hsl(var(--muted-foreground))' }} title="登出">
-              <LogOut size={15} />
+        <div className="p-3 border-t border-border">
+          <div className="flex items-center justify-between px-1">
+            <p className="text-xs truncate max-w-[160px] text-muted-foreground">{user?.email}</p>
+            <button onClick={signOut} className="p-1.5 rounded-lg transition-all hover:text-destructive text-muted-foreground hover:bg-muted" title="登出">
+              <LogOut size={14} />
             </button>
           </div>
         </div>
@@ -486,25 +494,24 @@ const MeetingAssistant: React.FC = () => {
       {/* ── Main ── */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
-        <header className="h-16 flex items-center justify-between px-5 md:px-8 sticky top-0 z-30 border-b aurora-glass"
-          style={{ borderColor: 'rgba(0, 212, 255, 0.15)' }}>
+        <header className="h-14 flex items-center justify-between px-4 md:px-6 sticky top-0 z-30 border-b border-border ios-glass">
           <div className="flex items-center gap-3">
             {(!isSidebarOpen || window.innerWidth < 1024) && (
-              <button onClick={() => setIsSidebarOpen(true)} className="p-2 rounded-xl transition-all active:scale-90 aurora-glass-light">
-                <Menu size={18} style={{ color: 'hsl(var(--accent))' }} />
+              <button onClick={() => setIsSidebarOpen(true)} className="p-2 rounded-xl transition-all active:scale-90 hover:bg-muted">
+                <Menu size={17} className="text-foreground" />
               </button>
             )}
-            <h2 className="text-base font-extrabold tracking-tighter truncate max-w-[180px] md:max-w-sm aurora-text-gradient">
+            <h2 className="text-sm font-semibold truncate max-w-[160px] md:max-w-sm text-foreground">
               {activeRecord ? activeRecord.title : '智會洞察助理'}
             </h2>
           </div>
           {activeRecord && (
-            <div className="flex items-center aurora-glass rounded-2xl p-1">
+            <div className="flex items-center bg-muted rounded-xl p-1 gap-0.5">
               {([1, 2, 3] as const).map(s => (
                 <button key={s}
                   disabled={(s === 2 || s === 3) && transcriptVersions.length === 0}
                   onClick={() => setStep(s)}
-                  className={`px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${step === s ? 'aurora-glass-light text-[hsl(var(--accent))]' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] disabled:opacity-30'}`}>
+                  className={`px-3.5 py-1.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 ${step === s ? 'ios-tab-active text-primary' : 'text-muted-foreground hover:text-foreground disabled:opacity-30'}`}>
                   {s === 1 ? '輸入' : s === 2 ? '校正' : '解讀'}
                 </button>
               ))}
@@ -513,64 +520,60 @@ const MeetingAssistant: React.FC = () => {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-8 pt-6 pb-24">
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 pt-5 pb-24">
           {!activeRecord ? (
             // ── Welcome screen ──
             <div className="h-full flex flex-col items-center justify-center">
-              <div className="flex flex-col items-center text-center max-w-lg px-4">
-                <div className="w-24 h-24 rounded-3xl flex items-center justify-center mb-8 aurora-border-gradient" style={{ background: 'rgba(123, 47, 247, 0.15)' }} >
-                  <BrainCircuit size={44} className="aurora-text-gradient" style={{ color: 'hsl(var(--accent))' }} />
+              <div className="flex flex-col items-center text-center max-w-md px-4">
+                <div className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6 bg-primary/10 shadow-ios-md">
+                  <BrainCircuit size={38} className="text-primary" />
                 </div>
-                <h3 className="text-4xl font-extrabold mb-4 tracking-tighter aurora-text-gradient">啟動智慧共振</h3>
-                <p className="text-sm mb-10 leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>透過 AI 深度解析會議數據。選擇一筆記錄或新增會議以啟動系統。</p>
+                <h3 className="text-3xl font-bold mb-3 tracking-tight text-foreground">啟動智慧分析</h3>
+                <p className="text-sm mb-8 leading-relaxed text-muted-foreground">透過 AI 深度解析會議數據。選擇一筆記錄或新增會議以啟動系統。</p>
                 <button onClick={createNewRecord}
-                  className="w-full py-4 rounded-2xl font-bold tracking-tight transition-all active:scale-95 aurora-border-gradient"
-                  style={{ background: 'rgba(0, 245, 255, 0.1)', color: 'hsl(var(--accent))' }}>
-                  立即啟動
+                  className="w-full py-3.5 rounded-2xl font-semibold transition-all active:scale-95 ios-btn-primary text-primary-foreground text-sm">
+                  立即建立
                 </button>
               </div>
             </div>
           ) : (
-            <div className="max-w-5xl mx-auto space-y-6">
+            <div className="max-w-5xl mx-auto space-y-5">
               {/* Error Banner */}
               {errorMsg && <ErrorBanner message={errorMsg} onDismiss={() => setErrorMsg(null)} />}
 
               {/* ── Step 1: Input ── */}
               {step === 1 && (
-                <div className="space-y-5">
-                  <div className="aurora-glass p-6 md:p-8 rounded-3xl grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2 flex items-center gap-3 mb-1">
-                      <Settings size={15} style={{ color: 'hsl(var(--muted-foreground))' }} />
-                      <h3 className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'hsl(var(--muted-foreground))' }}>系統參數初始化</h3>
+                <div className="space-y-4">
+                  <div className="ios-card p-5 md:p-6 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2 flex items-center gap-2 mb-1">
+                      <Settings size={14} className="text-muted-foreground" />
+                      <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">系統參數</h3>
                     </div>
                     {(['subject', 'keywords', 'speakers', 'terminology'] as const).map(field => (
-                      <div key={field} className="space-y-2">
-                        <label className="text-[9px] font-bold uppercase tracking-widest px-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      <div key={field} className="space-y-1.5">
+                        <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">
                           {field === 'subject' ? '會議主題' : field === 'keywords' ? '核心關鍵字' : field === 'speakers' ? '出席名單' : '專業術語'}
                         </label>
                         <input type="text" value={localMetadata[field]} onChange={e => handleMetadataChange(field, e.target.value)}
                           placeholder="輸入參數..."
-                          className="w-full p-3 rounded-2xl outline-none text-sm placeholder:text-[hsl(var(--muted-foreground)/0.4)] transition-all focus:ring-1 focus:ring-[hsl(var(--accent)/0.4)]"
-                          style={{ background: 'rgba(0, 212, 255, 0.05)', border: '1px solid rgba(0, 212, 255, 0.2)', color: 'hsl(var(--foreground))' }} />
+                          className="w-full p-3 rounded-xl text-sm placeholder:text-muted-foreground/40 transition-all ios-input text-foreground" />
                       </div>
                     ))}
                   </div>
 
-                  <div className="aurora-glass p-6 md:p-8 rounded-3xl">
-                    <div className="flex items-center gap-3 mb-5">
-                      <Upload size={15} style={{ color: 'hsl(var(--muted-foreground))' }} />
-                      <h3 className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'hsl(var(--muted-foreground))' }}>原始逐字稿輸入</h3>
-                      <span className="text-[9px] ml-auto" style={{ color: 'hsl(var(--muted-foreground))' }}>{localTranscript.length.toLocaleString()} 字</span>
+                  <div className="ios-card p-5 md:p-6 rounded-2xl">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Upload size={14} className="text-muted-foreground" />
+                      <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">原始逐字稿</h3>
+                      <span className="text-[10px] ml-auto text-muted-foreground">{localTranscript.length.toLocaleString()} 字</span>
                     </div>
                     <textarea value={localTranscript} onChange={e => handleTranscriptChange(e.target.value)}
-                      placeholder="在此貼上您的會議文本數據..."
-                      className="w-full min-h-[280px] h-80 p-5 rounded-2xl outline-none text-sm leading-relaxed resize-y transition-all placeholder:text-[hsl(var(--muted-foreground)/0.3)] focus:ring-1 focus:ring-[hsl(var(--accent)/0.4)]"
-                      style={{ background: 'rgba(0, 212, 255, 0.04)', border: '1px solid rgba(0, 212, 255, 0.15)', color: 'hsl(var(--foreground))' }} />
-                    <div className="mt-5 flex justify-end">
+                      placeholder="在此貼上您的會議逐字稿..."
+                      className="w-full min-h-[260px] h-72 p-4 rounded-xl text-sm leading-relaxed resize-y placeholder:text-muted-foreground/30 ios-input text-foreground" />
+                    <div className="mt-4 flex justify-end">
                       <button disabled={isLoading || !localTranscript?.trim()} onClick={runCorrection}
-                        className="w-full md:w-auto px-10 py-4 rounded-2xl font-bold tracking-tight transition-all flex items-center justify-center gap-3 disabled:opacity-30 active:scale-95 aurora-border-gradient"
-                        style={{ background: 'rgba(0, 245, 255, 0.12)', color: 'hsl(var(--accent))' }}>
-                        {isLoading ? <><Loader2 size={16} className="animate-spin" />校正中...</> : <><Zap size={16} />啟動校正引擎</>}
+                        className="w-full md:w-auto px-8 py-3.5 rounded-2xl font-semibold text-sm transition-all flex items-center justify-center gap-2.5 disabled:opacity-30 active:scale-95 ios-btn-primary text-primary-foreground">
+                        {isLoading ? <><Loader2 size={15} className="animate-spin" />校正中...</> : <><Zap size={15} />啟動校正引擎</>}
                       </button>
                     </div>
                   </div>
@@ -579,46 +582,42 @@ const MeetingAssistant: React.FC = () => {
 
               {/* ── Step 2: Correction ── */}
               {step === 2 && (
-                <div className="space-y-5">
-                  <div className="aurora-glass p-6 md:p-8 rounded-3xl">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-xl" style={{ background: 'rgba(0, 245, 255, 0.1)' }}>
-                          <Sparkles size={15} style={{ color: 'hsl(var(--accent))' }} />
+                <div className="space-y-4">
+                  <div className="ios-card p-5 md:p-6 rounded-2xl">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-2 rounded-xl bg-primary/10">
+                          <Sparkles size={14} className="text-primary" />
                         </div>
-                        <h3 className="text-base font-extrabold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>校正版本</h3>
+                        <h3 className="text-base font-semibold tracking-tight text-foreground">校正版本</h3>
                       </div>
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                          <History size={11} /><span>版本歷史</span>
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                          <History size={10} /><span>版本歷史</span>
                         </div>
                         <VersionPaginator total={transcriptVersions.length} current={activeTranscriptVersion} onChange={setActiveTranscriptVersion} />
                         <button onClick={() => copyToClipboard(currentTranscriptVersion?.correctedTranscript || '', 'corr')}
-                          className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest px-4 py-2 rounded-xl transition-all active:scale-95 aurora-glass-light"
-                          style={{ color: 'hsl(var(--accent))' }}>
-                          {copiedId === 'corr' ? <Check size={13} /> : <Copy size={13} />}
+                          className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest px-3.5 py-2 rounded-xl transition-all active:scale-95 ios-btn-secondary text-muted-foreground">
+                          {copiedId === 'corr' ? <Check size={12} /> : <Copy size={12} />}
                           {copiedId === 'corr' ? '已複製' : '複製'}
                         </button>
                       </div>
                     </div>
                     {currentTranscriptVersion && (
-                      <p className="text-[9px] mb-3 px-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      <p className="text-[10px] mb-3 text-muted-foreground">
                         版本 {currentTranscriptVersion.versionNumber} · {new Date(currentTranscriptVersion.createdAt).toLocaleString()}
                       </p>
                     )}
-                    <div className="p-5 rounded-2xl whitespace-pre-wrap text-sm leading-relaxed h-[480px] overflow-auto"
-                      style={{ background: 'rgba(0, 212, 255, 0.04)', border: '1px solid rgba(0, 212, 255, 0.15)', color: 'hsl(var(--foreground))' }}>
+                    <div className="p-4 rounded-xl whitespace-pre-wrap text-sm leading-relaxed h-[460px] overflow-auto bg-muted/50 border border-border text-foreground">
                       {currentTranscriptVersion?.correctedTranscript || '尚無校正版本'}
                     </div>
-                    <div className="mt-5 flex flex-col md:flex-row items-center justify-between gap-3">
+                    <div className="mt-4 flex flex-col md:flex-row items-center justify-between gap-3">
                       <button onClick={runCorrection} disabled={isLoading || !localTranscript?.trim()}
-                        className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold transition-all active:scale-95 disabled:opacity-30 aurora-glass-light"
-                        style={{ color: 'hsl(var(--muted-foreground))' }}>
-                        <Plus size={15} />重新校正（新版本）
+                        className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-95 disabled:opacity-30 ios-btn-secondary text-muted-foreground">
+                        <Plus size={14} />重新校正（新版本）
                       </button>
                       <button onClick={() => setStep(3)}
-                        className="w-full md:w-auto px-10 py-4 rounded-2xl font-bold tracking-tight transition-all active:scale-95 aurora-border-gradient"
-                        style={{ background: 'rgba(123, 47, 247, 0.15)', color: 'hsl(var(--primary))' }}>
+                        className="w-full md:w-auto px-8 py-3.5 rounded-2xl font-semibold text-sm transition-all active:scale-95 ios-btn-primary text-primary-foreground">
                         進入解讀矩陣 →
                       </button>
                     </div>
@@ -628,135 +627,159 @@ const MeetingAssistant: React.FC = () => {
 
               {/* ── Step 3: Insights ── */}
               {step === 3 && (
-                <div className="space-y-6 pb-20">
+                <div className="space-y-5 pb-20">
                   {/* Transcript version selector */}
                   {transcriptVersions.length > 1 && (
-                    <div className="flex items-center gap-3 aurora-glass p-4 rounded-2xl">
-                      <p className="text-[9px] font-bold uppercase tracking-widest whitespace-nowrap" style={{ color: 'hsl(var(--muted-foreground))' }}>分析基底版本</p>
+                    <div className="flex items-center gap-3 ios-card p-3.5 rounded-xl">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest whitespace-nowrap text-muted-foreground">分析基底</p>
                       <VersionPaginator total={transcriptVersions.length} current={activeTranscriptVersion} onChange={setActiveTranscriptVersion} />
-                      <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>校正版本 {activeTranscriptVersion}</span>
+                      <span className="text-xs text-muted-foreground">校正版本 {activeTranscriptVersion}</span>
                     </div>
                   )}
 
-                  {/* Module buttons */}
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    {(Object.values(INSIGHT_MODULE_CONFIGS) as any[]).map(m => {
-                      const versions = moduleVersionsMap[m.id] || [];
-                      const hasResult = versions.length > 0;
-                      const isThis = activeModuleId === m.id && isLoading;
-                      return (
-                        <button key={m.id} onClick={() => runInitialAnalysis(m.id)} disabled={isLoading || !currentTranscriptVersion}
-                          className={`flex flex-col items-center justify-center p-4 rounded-3xl transition-all duration-300 relative active:scale-95 aurora-border-gradient ${hasResult ? '' : ''}`}
-                          style={{
-                            background: hasResult ? 'rgba(123, 47, 247, 0.2)' : 'rgba(0, 212, 255, 0.05)',
-                            color: hasResult ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
-                          }}>
-                          <div className={`mb-2 ${hasResult ? '' : ''}`}>{m.icon}</div>
-                          <span className="text-[9px] font-bold uppercase tracking-widest text-center leading-tight">{m.name}</span>
-                          {hasResult && <span className="text-[8px] mt-1 opacity-60">共 {versions.length} 版</span>}
-                          {isThis && (
-                            <div className="absolute inset-0 flex items-center justify-center backdrop-blur-sm rounded-3xl" style={{ background: 'rgba(10, 14, 39, 0.7)' }}>
-                              <Loader2 className="animate-spin" size={20} style={{ color: 'hsl(var(--accent))' }} />
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {/* ── Module Tabs ── */}
+                  <div className="ios-card rounded-2xl overflow-hidden">
+                    {/* Tab bar */}
+                    <div className="flex border-b border-border bg-muted/40 overflow-x-auto">
+                      {moduleIds.map(mId => {
+                        const m = INSIGHT_MODULE_CONFIGS[mId];
+                        const versions = moduleVersionsMap[mId] || [];
+                        const hasResult = versions.length > 0;
+                        const isActiveTab = activeModuleTab === mId;
+                        const isThisLoading = activeModuleId === mId && isLoading;
+                        return (
+                          <button
+                            key={mId}
+                            onClick={() => setActiveModuleTab(mId)}
+                            className={`relative flex items-center gap-2 px-4 py-3.5 text-xs font-semibold whitespace-nowrap transition-all border-b-2 flex-shrink-0 ${
+                              isActiveTab
+                                ? 'border-primary text-primary bg-card'
+                                : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                            }`}
+                          >
+                            <span className="flex items-center gap-1.5">
+                              {isThisLoading
+                                ? <Loader2 size={13} className="animate-spin text-primary" />
+                                : <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold ${hasResult ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{mId}</span>
+                              }
+                              {m.name}
+                            </span>
+                            {hasResult && !isThisLoading && (
+                              <span className="ml-1 bg-primary/15 text-primary text-[9px] font-bold px-1.5 py-0.5 rounded-full">{versions.length}</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                  {/* Module results */}
-                  <div className="space-y-8">
-                    {Object.entries(moduleVersionsMap).map(([moduleId, versions]) => {
-                      if (versions.length === 0) return null;
-                      const m = (INSIGHT_MODULE_CONFIGS as any)[moduleId];
-                      const activeVerNum = activeModuleVersion[moduleId] || 1;
+                    {/* Tab content */}
+                    {moduleIds.map(mId => {
+                      if (activeModuleTab !== mId) return null;
+                      const m = INSIGHT_MODULE_CONFIGS[mId];
+                      const versions = moduleVersionsMap[mId] || [];
+                      const hasResult = versions.length > 0;
+                      const activeVerNum = activeModuleVersion[mId] || 1;
                       const activeVer = versions.find(v => v.versionNumber === activeVerNum);
                       const chat = activeVer?.messages || [];
                       const lastAiResponse = chat.filter(msg => msg.role === 'model').slice(-1)[0]?.text || '';
-                      const copyId = `chat-${moduleId}`;
+                      const copyId = `chat-${mId}`;
+                      const isThisLoading = activeModuleId === mId && isLoading;
 
                       return (
-                        <div key={moduleId} className="aurora-glass rounded-3xl overflow-hidden">
-                          {/* Module header */}
-                          <div className="px-6 md:px-8 py-5 border-b flex flex-col md:flex-row justify-between md:items-center gap-3"
-                            style={{ borderColor: 'rgba(0, 212, 255, 0.15)', background: 'rgba(0, 212, 255, 0.04)' }}>
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 rounded-xl shrink-0" style={{ background: 'rgba(123, 47, 247, 0.15)', color: 'hsl(var(--primary))' }}>{m.icon}</div>
-                              <div>
-                                <h4 className="text-sm font-extrabold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>{m.name}</h4>
-                                {activeVer && <p className="text-[9px] mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>{new Date(activeVer.createdAt).toLocaleString()}</p>}
+                        <div key={mId}>
+                          {!hasResult ? (
+                            // ── Empty state for this module ──
+                            <div className="py-20 flex flex-col items-center text-center px-6">
+                              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5 bg-muted">
+                                <Sparkles size={24} className="text-muted-foreground" />
                               </div>
-                            </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                <History size={11} />版本
-                              </div>
-                              <VersionPaginator total={versions.length} current={activeVerNum}
-                                onChange={v => setActiveModuleVersion(prev => ({ ...prev, [moduleId]: v }))} />
-                              <button onClick={() => copyToClipboard(lastAiResponse, copyId)}
-                                className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest px-4 py-2 rounded-xl transition-all active:scale-95 aurora-glass-light"
-                                style={{ color: 'hsl(var(--accent))' }}>
-                                {copiedId === copyId ? <Check size={12} /> : <Copy size={12} />}
-                                {copiedId === copyId ? '已複製' : 'Copy MD'}
+                              <h4 className="text-base font-semibold mb-2 text-foreground">{m.name}</h4>
+                              <p className="text-sm text-muted-foreground mb-6 max-w-xs">點擊下方按鈕，啟動 AI 對此模組的深度分析</p>
+                              <button
+                                onClick={() => runInitialAnalysis(mId)}
+                                disabled={isLoading || !currentTranscriptVersion}
+                                className="px-7 py-3 rounded-2xl font-semibold text-sm transition-all active:scale-95 disabled:opacity-30 flex items-center gap-2 ios-btn-primary text-primary-foreground"
+                              >
+                                {isThisLoading
+                                  ? <><Loader2 size={14} className="animate-spin" />分析中...</>
+                                  : <><Zap size={14} />啟動模組 {mId} 分析</>
+                                }
                               </button>
                             </div>
-                          </div>
+                          ) : (
+                            <>
+                              {/* Module header */}
+                              <div className="px-5 py-3.5 border-b border-border flex flex-col md:flex-row justify-between md:items-center gap-2.5 bg-muted/20">
+                                <div className="flex items-center gap-2">
+                                  {activeVer && <p className="text-[10px] text-muted-foreground">版本 {activeVer.versionNumber} · {new Date(activeVer.createdAt).toLocaleString()}</p>}
+                                </div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {versions.length > 1 && (
+                                    <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                                      <History size={10} />版本
+                                    </div>
+                                  )}
+                                  <VersionPaginator total={versions.length} current={activeVerNum}
+                                    onChange={v => setActiveModuleVersion(prev => ({ ...prev, [mId]: v }))} />
+                                  <button onClick={() => copyToClipboard(lastAiResponse, copyId)}
+                                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest px-3.5 py-2 rounded-xl transition-all active:scale-95 ios-btn-secondary text-muted-foreground">
+                                    {copiedId === copyId ? <Check size={11} /> : <Copy size={11} />}
+                                    {copiedId === copyId ? '已複製' : 'Copy MD'}
+                                  </button>
+                                  <button
+                                    onClick={() => runInitialAnalysis(mId)}
+                                    disabled={isLoading || !currentTranscriptVersion}
+                                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest px-3.5 py-2 rounded-xl transition-all active:scale-95 disabled:opacity-30 ios-btn-secondary text-muted-foreground"
+                                  >
+                                    <Plus size={11} />新版本
+                                  </button>
+                                </div>
+                              </div>
 
-                          {/* Chat messages */}
-                          <div className="p-6 md:p-8 space-y-5 max-h-[560px] overflow-auto">
-                            {chat.map((msg, index) => (
-                              <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[90%] ${msg.role === 'user' ? 'px-5 py-4 rounded-3xl rounded-tr-none' : 'w-full'}`}
-                                  style={msg.role === 'user' ? { background: 'rgba(123, 47, 247, 0.2)', border: '1px solid rgba(123, 47, 247, 0.4)', color: 'hsl(var(--foreground))' } : {}}>
-                                  {msg.role === 'user'
-                                    ? <p className="font-medium italic text-sm">「{msg.text}」</p>
-                                    : <MarkdownRenderer text={msg.text} />}
-                                  <div className="mt-1.5 text-[9px] flex items-center gap-1 opacity-50" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                                    <Clock size={9} /> {new Date(msg.timestamp).toLocaleTimeString()}
+                              {/* Chat messages */}
+                              <div className="p-5 md:p-6 space-y-5 max-h-[560px] overflow-auto">
+                                {chat.map((msg, index) => (
+                                  <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-[90%] ${msg.role === 'user' ? 'px-4 py-3.5 rounded-2xl rounded-tr-none bg-primary text-primary-foreground' : 'w-full'}`}>
+                                      {msg.role === 'user'
+                                        ? <p className="font-medium italic text-sm">「{msg.text}」</p>
+                                        : <MarkdownRenderer text={msg.text} />}
+                                      <div className="mt-1.5 text-[9px] flex items-center gap-1 opacity-50 text-current">
+                                        <Clock size={9} /> {new Date(msg.timestamp).toLocaleTimeString()}
+                                      </div>
+                                    </div>
                                   </div>
-                                </div>
+                                ))}
+                                {isThisLoading && (
+                                  <div className="flex items-center gap-2.5 py-2">
+                                    <div className="flex gap-1">
+                                      {[0, 1, 2].map(i => (
+                                        <div key={i} className="w-1.5 h-1.5 rounded-full animate-bounce bg-primary" style={{ animationDelay: `${i * 0.2}s` }} />
+                                      ))}
+                                    </div>
+                                    <span className="text-xs text-muted-foreground">AI 思考中...</span>
+                                  </div>
+                                )}
                               </div>
-                            ))}
-                            {activeModuleId === moduleId && isLoading && (
-                              <div className="flex items-center gap-3 py-3">
-                                <div className="flex gap-1.5">
-                                  {[0, 1, 2].map(i => (
-                                    <div key={i} className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'hsl(var(--accent))', animationDelay: `${i * 0.2}s` }} />
-                                  ))}
-                                </div>
-                                <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>AI 思考中...</span>
-                              </div>
-                            )}
-                          </div>
 
-                          {/* Chat input */}
-                          <div className="p-5 border-t" style={{ borderColor: 'rgba(0, 212, 255, 0.15)', background: 'rgba(0, 212, 255, 0.03)' }}>
-                            <div className="flex items-center gap-3">
-                              <input type="text" value={chatInputs[moduleId] || ''} onChange={e => setChatInputs(prev => ({ ...prev, [moduleId]: e.target.value }))}
-                                onKeyDown={e => e.key === 'Enter' && sendModuleChat(moduleId)}
-                                placeholder={`針對「${m.name}」提出進一步討論...`}
-                                className="flex-1 p-4 rounded-2xl text-sm outline-none transition-all placeholder:text-[hsl(var(--muted-foreground)/0.4)] focus:ring-1 focus:ring-[hsl(var(--accent)/0.3)]"
-                                style={{ background: 'rgba(0, 212, 255, 0.05)', border: '1px solid rgba(0, 212, 255, 0.15)', color: 'hsl(var(--foreground))' }} />
-                              <button onClick={() => sendModuleChat(moduleId)} disabled={isLoading || !chatInputs[moduleId]?.trim()}
-                                className="p-4 rounded-2xl transition-all disabled:opacity-20 active:scale-95 aurora-border-gradient"
-                                style={{ background: 'rgba(0, 245, 255, 0.1)', color: 'hsl(var(--accent))' }}>
-                                {isLoading && activeModuleId === moduleId ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
-                              </button>
-                            </div>
-                          </div>
+                              {/* Chat input */}
+                              <div className="p-4 border-t border-border bg-muted/20">
+                                <div className="flex items-center gap-2.5">
+                                  <input type="text" value={chatInputs[mId] || ''} onChange={e => setChatInputs(prev => ({ ...prev, [mId]: e.target.value }))}
+                                    onKeyDown={e => e.key === 'Enter' && sendModuleChat(mId)}
+                                    placeholder={`針對「${m.name}」深入探討...`}
+                                    className="flex-1 p-3.5 rounded-xl text-sm ios-input placeholder:text-muted-foreground/40 text-foreground" />
+                                  <button onClick={() => sendModuleChat(mId)} disabled={isLoading || !chatInputs[mId]?.trim()}
+                                    className="p-3.5 rounded-xl transition-all disabled:opacity-25 active:scale-95 ios-btn-primary text-primary-foreground">
+                                    {isLoading && activeModuleId === mId ? <Loader2 className="animate-spin" size={15} /> : <Send size={15} />}
+                                  </button>
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </div>
                       );
                     })}
-
-                    {Object.keys(moduleVersionsMap).length === 0 && !isLoading && (
-                      <div className="py-24 text-center aurora-glass rounded-3xl">
-                        <div className="w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-6 aurora-border-gradient" style={{ background: 'rgba(0, 212, 255, 0.08)' }}>
-                          <Sparkles size={28} style={{ color: 'hsl(var(--accent))' }} />
-                        </div>
-                        <h4 className="text-2xl font-extrabold mb-3 tracking-tighter aurora-text-gradient">解讀矩陣待命中</h4>
-                        <p className="text-sm max-w-md mx-auto" style={{ color: 'hsl(var(--muted-foreground))' }}>點擊上方模組標籤，啟動對特定內容的深度分析。</p>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
@@ -767,8 +790,8 @@ const MeetingAssistant: React.FC = () => {
 
       {/* ── Global Loading Overlay ── */}
       {isLoading && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none" style={{ background: 'rgba(10, 14, 39, 0.75)', backdropFilter: 'blur(8px)' }}>
-          <div className="aurora-glass p-10 rounded-3xl flex flex-col items-center max-w-sm w-full mx-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(6px)' }}>
+          <div className="ios-card p-8 rounded-3xl flex flex-col items-center max-w-sm w-full mx-4 shadow-ios-lg">
             <ProgressSteps step={loadingStep} label={loadingLabel} />
           </div>
         </div>

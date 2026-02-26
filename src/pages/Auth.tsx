@@ -39,84 +39,61 @@ const Auth: React.FC = () => {
     }
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '14px 16px',
-    background: 'rgba(0, 212, 255, 0.05)',
-    border: '1px solid rgba(0, 212, 255, 0.2)',
-    borderRadius: '16px',
-    outline: 'none',
-    color: 'hsl(200, 100%, 96%)',
-    fontSize: '14px',
-    transition: 'all 0.2s',
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center p-4"
-      style={{
-        background: 'hsl(230, 45%, 7%)',
-        backgroundImage: `
-          radial-gradient(ellipse at 20% 30%, rgba(0, 245, 255, 0.07) 0%, transparent 50%),
-          radial-gradient(ellipse at 80% 70%, rgba(123, 47, 247, 0.1) 0%, transparent 50%)
-        `,
-      }}>
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <div className="w-full max-w-sm">
         {/* Logo */}
-        <div className="flex flex-col items-center mb-10">
-          <div className="p-5 rounded-3xl mb-5 aurora-border-gradient" style={{ background: 'rgba(123, 47, 247, 0.15)' }}>
-            <BrainCircuit size={40} style={{ color: '#00F5FF' }} />
+        <div className="flex flex-col items-center mb-8">
+          <div className="p-4 rounded-3xl mb-5 bg-primary/10 shadow-ios-md">
+            <BrainCircuit size={36} className="text-primary" />
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tighter aurora-text-gradient">智會洞察</h1>
-          <p className="text-sm mt-2" style={{ color: 'rgba(200, 240, 255, 0.5)' }}>AI 驅動的會議深度分析系統</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">智會洞察</h1>
+          <p className="text-sm mt-1.5 text-muted-foreground">AI 驅動的會議深度分析系統</p>
         </div>
 
         {/* Mode toggle */}
-        <div className="flex mb-8 p-1 rounded-2xl aurora-glass">
+        <div className="flex mb-6 p-1 rounded-2xl bg-muted gap-1">
           {(['login', 'signup'] as Mode[]).map(m => (
             <button key={m} onClick={() => { setMode(m); setMessage(null); }}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-bold tracking-wide transition-all duration-200 ${mode === m ? 'aurora-glass-light' : 'opacity-50 hover:opacity-80'}`}
-              style={{ color: mode === m ? '#00F5FF' : 'rgba(200, 240, 255, 0.7)' }}>
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold tracking-wide transition-all duration-200 ${mode === m ? 'bg-card shadow-ios-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
               {m === 'login' ? '登入' : '建立帳號'}
             </button>
           ))}
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3.5">
           {mode === 'signup' && (
             <div className="space-y-1.5">
-              <label className="text-[9px] font-bold uppercase tracking-widest px-1" style={{ color: 'rgba(0, 245, 255, 0.6)' }}>顯示名稱</label>
+              <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">顯示名稱</label>
               <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
-                placeholder="您的名稱" style={inputStyle} />
+                placeholder="您的名稱"
+                className="w-full p-3.5 rounded-xl text-sm ios-input text-foreground placeholder:text-muted-foreground/40" />
             </div>
           )}
           <div className="space-y-1.5">
-            <label className="text-[9px] font-bold uppercase tracking-widest px-1" style={{ color: 'rgba(0, 245, 255, 0.6)' }}>電子郵件</label>
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">電子郵件</label>
             <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
-              placeholder="your@email.com" style={inputStyle} />
+              placeholder="your@email.com"
+              className="w-full p-3.5 rounded-xl text-sm ios-input text-foreground placeholder:text-muted-foreground/40" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[9px] font-bold uppercase tracking-widest px-1" style={{ color: 'rgba(0, 245, 255, 0.6)' }}>密碼</label>
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">密碼</label>
             <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
-              placeholder="至少 6 位字元" minLength={6} style={inputStyle} />
+              placeholder="至少 6 位字元" minLength={6}
+              className="w-full p-3.5 rounded-xl text-sm ios-input text-foreground placeholder:text-muted-foreground/40" />
           </div>
 
           {message && (
-            <div className={`flex items-start gap-3 p-4 rounded-2xl text-sm font-medium ${message.type === 'error' ? '' : ''}`}
-              style={{
-                background: message.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(0, 245, 255, 0.08)',
-                border: `1px solid ${message.type === 'error' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(0, 245, 255, 0.25)'}`,
-                color: message.type === 'error' ? 'rgb(248, 113, 113)' : '#00F5FF',
-              }}>
-              {message.type === 'error' ? <AlertCircle size={16} className="shrink-0 mt-0.5" /> : <CheckCircle size={16} className="shrink-0 mt-0.5" />}
+            <div className={`flex items-start gap-2.5 p-3.5 rounded-xl text-sm font-medium border ${message.type === 'error' ? 'bg-destructive/8 border-destructive/20 text-destructive' : 'bg-primary/8 border-primary/20 text-primary'}`}>
+              {message.type === 'error' ? <AlertCircle size={15} className="shrink-0 mt-0.5" /> : <CheckCircle size={15} className="shrink-0 mt-0.5" />}
               {message.text}
             </div>
           )}
 
           <button type="submit" disabled={isLoading}
-            className="w-full py-4 rounded-2xl font-bold tracking-tight transition-all active:scale-95 disabled:opacity-40 flex items-center justify-center gap-2 mt-2 aurora-border-gradient"
-            style={{ background: 'rgba(0, 245, 255, 0.12)', color: '#00F5FF' }}>
-            {isLoading ? <><Loader2 size={16} className="animate-spin" />處理中...</> : mode === 'login' ? '登入系統' : '建立帳號'}
+            className="w-full py-3.5 rounded-2xl font-semibold text-sm tracking-tight transition-all active:scale-95 disabled:opacity-40 flex items-center justify-center gap-2 mt-1 ios-btn-primary text-primary-foreground">
+            {isLoading ? <><Loader2 size={15} className="animate-spin" />處理中...</> : mode === 'login' ? '登入系統' : '建立帳號'}
           </button>
         </form>
       </div>
