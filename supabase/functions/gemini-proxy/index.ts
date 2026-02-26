@@ -6,6 +6,11 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+// ─── Lovable AI Gateway config ────────────────────────────────────────────────
+// Uses LOVABLE_API_KEY (pre-provisioned) → no external API key needed
+const LOVABLE_GATEWAY_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+const MODEL = 'google/gemini-3-flash-preview';
+
 // ─── Embedded System Prompts ───────────────────────────────────────────────────
 
 const CORRECTION_SYSTEM_PROMPT = `你是一位專業的「錄音逐字稿校正員」。你的任務是將原始、碎片化且充滿錯誤的逐字稿轉化為清晰、準確、可讀的完整記錄。
@@ -60,18 +65,98 @@ const MODULE_SYSTEM_PROMPT = `你是一位專業的會議洞察分析師。請�
 - 每段摘要須對應來源語句，包含：【原文摘錄】【內容歸類】【任務分層（交辦人→負責人→時程）】。
 - 無法判讀時標記「⚠️ 模糊訊號：需人工確認」。`;
 
-// ─── Helper: fetch with timeout ───────────────────────────────────────────────
+// ─── Helper: call Lovable AI Gateway (OpenAI-compatible) ─────────────────────
 
-async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
+async function callGateway(systemPrompt: string, userMessage: string, temperature: number): Promise<string> {
+  const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+  if (!lovableApiKey) throw new Error('LOVABLE_API_KEY not configured');
+
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 min
+
   try {
-    const response = await fetch(url, { ...options, signal: controller.signal });
+    const response = await fetch(LOVABLE_GATEWAY_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${lovableApiKey}`,
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage },
+        ],
+        temperature,
+        max_tokens: 65536,
+      }),
+      signal: controller.signal,
+    });
+
     clearTimeout(timeoutId);
-    return response;
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      console.error('Gateway error:', errData);
+      throw new Error(errData?.error?.message || `Gateway error ${response.status}`);
+    }
+
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content || '';
+    if (!text) throw new Error('AI 回傳空白結果，請稍後重試');
+    return text;
+
   } catch (err: any) {
     clearTimeout(timeoutId);
-    if (err.name === 'AbortError') throw new Error(`請求超時（超過 ${timeoutMs / 1000} 秒），請嘗試縮短逐字稿長度後重試。`);
+    if (err.name === 'AbortError') throw new Error('請求超時（超過 300 秒），請嘗試縮短逐字稿長度後重試。');
+    throw err;
+  }
+}
+
+// ─── Helper: call Gateway with multi-turn history ─────────────────────────────
+
+async function callGatewayWithHistory(systemPrompt: string, messages: { role: string; content: string }[], temperature: number): Promise<string> {
+  const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+  if (!lovableApiKey) throw new Error('LOVABLE_API_KEY not configured');
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 300000);
+
+  try {
+    const response = await fetch(LOVABLE_GATEWAY_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${lovableApiKey}`,
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages,
+        ],
+        temperature,
+        max_tokens: 65536,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      console.error('Gateway error:', errData);
+      throw new Error(errData?.error?.message || `Gateway error ${response.status}`);
+    }
+
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content || '';
+    if (!text) throw new Error('AI 回傳空白結果，請稍後重試');
+    return text;
+
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') throw new Error('請求超時（超過 300 秒），請嘗試縮短逐字稿長度後重試。');
     throw err;
   }
 }
@@ -84,23 +169,14 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const apiKey = Deno.env.get('GEMINI_API_KEY');
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'API key not configured' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     const body = await req.json();
     const { action, payload } = body;
 
-    let geminiPayload: any;
+    let text: string;
 
     if (action === 'correctTranscript') {
       const { transcript, metadata } = payload;
 
-      // Validate input
       if (!transcript || transcript.trim().length === 0) {
         return new Response(JSON.stringify({ error: '逐字稿內容不得為空' }), {
           status: 400,
@@ -108,14 +184,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      geminiPayload = {
-        system_instruction: {
-          parts: [{ text: CORRECTION_SYSTEM_PROMPT }]
-        },
-        contents: [{
-          role: 'user',
-          parts: [{
-            text: `現在請執行「逐字稿校正」任務。
+      const userMessage = `現在請執行「逐字稿校正」任務。
 
 【會議背景資訊】
 主題：${metadata?.subject || '（未提供）'}
@@ -125,16 +194,13 @@ Deno.serve(async (req) => {
 長度：${metadata?.length || '（未提供）'}
 
 【原始逐字稿內容】
-${transcript}`
-          }]
-        }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 65536 }
-      };
+${transcript}`;
+
+      text = await callGateway(CORRECTION_SYSTEM_PROMPT, userMessage, 0.2);
 
     } else if (action === 'analyzeTranscript') {
       const { transcript, moduleId, moduleName, history = [] } = payload;
 
-      // Validate input
       if (!transcript || transcript.trim().length === 0) {
         return new Response(JSON.stringify({ error: '逐字稿內容不得為空' }), {
           status: 400,
@@ -150,74 +216,39 @@ ${transcript}`
         E: '執行「模組 E：會議摘要與結論重構」',
       };
 
-      const moduleTask = moduleId ? (moduleTaskMap[moduleId] || moduleName || '執行深度會議分析') : (moduleName || '執行深度會議分析');
+      const moduleTask = moduleId
+        ? (moduleTaskMap[moduleId] || moduleName || '執行深度會議分析')
+        : (moduleName || '執行深度會議分析');
 
-      let contents: any[];
+      // Build message list for multi-turn
+      const messages: { role: string; content: string }[] = [];
 
       if (history.length === 0) {
-        contents = [{
+        messages.push({
           role: 'user',
-          parts: [{
-            text: `以下是已校正的會議逐字稿：\n---\n${transcript}\n---\n\n【模組任務目標】\n${moduleTask}\n\n請根據以上逐字稿，執行任務目標，以繁體中文輸出。`
-          }]
-        }];
+          content: `以下是已校正的會議逐字稿：\n---\n${transcript}\n---\n\n【模組任務目標】\n${moduleTask}\n\n請根據以上逐字稿，執行任務目標，以繁體中文輸出。`,
+        });
       } else {
-        contents = [];
+        // First user message always includes transcript
         if (history[0]?.role === 'model') {
-          contents.push({
+          messages.push({
             role: 'user',
-            parts: [{ text: `以下是已校正的會議逐字稿：\n---\n${transcript}\n---\n\n【模組任務目標】\n${moduleTask}\n\n請根據以上逐字稿，執行任務目標，以繁體中文輸出。` }]
+            content: `以下是已校正的會議逐字稿：\n---\n${transcript}\n---\n\n【模組任務目標】\n${moduleTask}\n\n請根據以上逐字稿，執行任務目標，以繁體中文輸出。`,
           });
         }
         for (const msg of history) {
-          contents.push({
-            role: msg.role === 'user' ? 'user' : 'model',
-            parts: [{ text: msg.text }]
+          messages.push({
+            role: msg.role === 'user' ? 'user' : 'assistant',
+            content: msg.text,
           });
         }
       }
 
-      geminiPayload = {
-        system_instruction: { parts: [{ text: MODULE_SYSTEM_PROMPT }] },
-        contents,
-        generationConfig: { temperature: 0.5, maxOutputTokens: 65536 }
-      };
+      text = await callGatewayWithHistory(MODULE_SYSTEM_PROMPT, messages, 0.5);
 
     } else {
       return new Response(JSON.stringify({ error: 'Unknown action' }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-    // 300 second timeout for long transcripts
-    const geminiResponse = await fetchWithTimeout(
-      geminiUrl,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(geminiPayload),
-      },
-      300000
-    );
-
-    if (!geminiResponse.ok) {
-      const errData = await geminiResponse.json();
-      console.error('Gemini API error:', errData);
-      return new Response(JSON.stringify({ error: errData?.error?.message || 'Gemini API error' }), {
-        status: geminiResponse.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const data = await geminiResponse.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    if (!text) {
-      return new Response(JSON.stringify({ error: 'API 回傳空白結果，請稍後重試' }), {
-        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
