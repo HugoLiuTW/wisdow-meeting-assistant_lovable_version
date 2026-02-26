@@ -36,39 +36,108 @@ interface ModuleVersion {
   messages: ChatMessage[];
 }
 
+// ─── Inline Markdown Parser (bold, italic, inline code) ──────────────────────
+const parseInline = (text: string): React.ReactNode[] => {
+  const tokens = text.split(/(\*\*\*.*?\*\*\*|\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
+  return tokens.map((token, idx) => {
+    if (token.startsWith('***') && token.endsWith('***'))
+      return <strong key={idx}><em>{token.slice(3, -3)}</em></strong>;
+    if (token.startsWith('**') && token.endsWith('**'))
+      return <strong key={idx}>{token.slice(2, -2)}</strong>;
+    if (token.startsWith('*') && token.endsWith('*') && token.length > 2)
+      return <em key={idx}>{token.slice(1, -1)}</em>;
+    if (token.startsWith('`') && token.endsWith('`') && token.length > 2)
+      return <code key={idx} className="px-1.5 py-0.5 rounded bg-muted text-foreground font-mono text-[0.85em]">{token.slice(1, -1)}</code>;
+    return token;
+  });
+};
+
 // ─── Markdown Renderer ────────────────────────────────────────────────────────
 const MarkdownRenderer = ({ text }: { text: string }) => {
   const lines = text.split('\n');
   const elements: React.ReactNode[] = [];
   let i = 0;
+
   while (i < lines.length) {
     const line = lines[i];
-    if (line.trim().startsWith('|') && lines[i + 1]?.trim().match(/^\|?(\s*:?-+:?\s*\|)+\s*:?-+:?\s*\|?$/)) {
+
+    // ── Table ──
+    if (line.trim().startsWith('|') && lines[i + 1]?.trim().match(/^\|[-| :]+\|$/)) {
       const tableLines: string[] = [];
-      while (i < lines.length && lines[i].trim().startsWith('|')) { tableLines.push(lines[i]); i++; }
-      const headerCells = tableLines[0].split('|').filter(c => c.trim()).map(c => c.trim());
-      const bodyRows = tableLines.slice(2).map(row => row.split('|').filter(c => c.trim()).map(c => c.trim()));
+      while (i < lines.length && lines[i].trim().startsWith('|')) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      const parseRow = (row: string) =>
+        row.split('|').filter((_, ci, arr) => ci > 0 && ci < arr.length - 1).map(c => c.trim());
+      const headerCells = parseRow(tableLines[0]);
+      const bodyRows = tableLines.slice(2).map(parseRow);
       elements.push(
         <div key={`table-${i}`} className="table-wrapper">
-          <table><thead><tr>{headerCells.map((cell, idx) => <th key={idx}>{cell}</th>)}</tr></thead>
-            <tbody>{bodyRows.map((row, rIdx) => (<tr key={rIdx}>{row.map((cell, cIdx) => <td key={cIdx}>{cell}</td>)}</tr>))}</tbody>
+          <table>
+            <thead>
+              <tr>{headerCells.map((cell, idx) => <th key={idx}>{parseInline(cell)}</th>)}</tr>
+            </thead>
+            <tbody>
+              {bodyRows.map((row, rIdx) => (
+                <tr key={rIdx}>{row.map((cell, cIdx) => <td key={cIdx}>{parseInline(cell)}</td>)}</tr>
+              ))}
+            </tbody>
           </table>
         </div>
       );
       continue;
     }
-    if (line.startsWith('# ')) elements.push(<h1 key={i}>{line.substring(2)}</h1>);
-    else if (line.startsWith('## ')) elements.push(<h2 key={i}>{line.substring(3)}</h2>);
-    else if (line.startsWith('### ')) elements.push(<h3 key={i}>{line.substring(4)}</h3>);
-    else if (line.startsWith('- ') || line.startsWith('* ')) elements.push(<ul key={i}><li>{line.substring(2)}</li></ul>);
-    else if (/^\d+\. /.test(line)) elements.push(<ol key={i}><li>{line.replace(/^\d+\. /, '')}</li></ol>);
-    else if (line.trim() === '') elements.push(<div key={i} className="h-3" />);
-    else {
-      const parts = line.split(/(\*\*.*?\*\*)/g);
-      elements.push(<p key={i}>{parts.map((part, pIdx) => part.startsWith('**') && part.endsWith('**') ? <strong key={pIdx}>{part.slice(2, -2)}</strong> : part)}</p>);
+
+    // ── Headings ──
+    if (line.startsWith('# ')) {
+      elements.push(<h1 key={i}>{parseInline(line.substring(2))}</h1>);
+    } else if (line.startsWith('## ')) {
+      elements.push(<h2 key={i}>{parseInline(line.substring(3))}</h2>);
+    } else if (line.startsWith('### ')) {
+      elements.push(<h3 key={i}>{parseInline(line.substring(4))}</h3>);
+    } else if (line.startsWith('#### ')) {
+      elements.push(<h3 key={i}>{parseInline(line.substring(5))}</h3>);
+
+    // ── Unordered list ──
+    } else if (/^(\s*)([-*+]) /.test(line)) {
+      const content = line.replace(/^\s*[-*+] /, '');
+      const indent = (line.match(/^(\s+)/)?.[1].length || 0) > 0;
+      elements.push(
+        <ul key={i} className={indent ? 'pl-4' : ''}>
+          <li>{parseInline(content)}</li>
+        </ul>
+      );
+
+    // ── Ordered list ──
+    } else if (/^\s*\d+\. /.test(line)) {
+      const content = line.replace(/^\s*\d+\. /, '');
+      elements.push(<ol key={i}><li>{parseInline(content)}</li></ol>);
+
+    // ── Blockquote ──
+    } else if (line.startsWith('> ')) {
+      elements.push(
+        <blockquote key={i} className="border-l-4 border-primary/40 pl-4 my-2 text-muted-foreground italic text-sm">
+          {parseInline(line.substring(2))}
+        </blockquote>
+      );
+
+    // ── Horizontal rule ──
+    } else if (/^---+$/.test(line.trim())) {
+      elements.push(<hr key={i} className="border-border my-4" />);
+
+    // ── Blank line ──
+    } else if (line.trim() === '') {
+      elements.push(<div key={i} className="h-2" />);
+
+    // ── Paragraph ──
+    } else {
+      elements.push(<p key={i}>{parseInline(line)}</p>);
     }
+
     i++;
   }
+
   return <div className="markdown-content">{elements}</div>;
 };
 
@@ -455,14 +524,14 @@ const MeetingAssistant: React.FC = () => {
         </div>
 
         <div className="flex-1 overflow-y-auto px-2 pb-3">
-          <p className="text-[10px] font-semibold tracking-widest uppercase px-2 mb-2 mt-1 text-muted-foreground">歷史記錄</p>
+          <p className="text-[11px] font-semibold tracking-widest uppercase px-2 mb-2 mt-1 text-muted-foreground">歷史記錄</p>
           {records.map(r => (
             <div key={r.id}
               onClick={() => { setActiveRecordId(r.id); setStep(1); setErrorMsg(null); if (window.innerWidth < 1024) setIsSidebarOpen(false); }}
               className={`group flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition-all duration-150 mb-0.5 ${activeRecordId === r.id ? 'bg-primary/10' : 'hover:bg-sidebar-accent'}`}>
               <div className="flex flex-col min-w-0 flex-1">
                 <span className={`truncate font-medium text-sm ${activeRecordId === r.id ? 'text-primary' : 'text-sidebar-foreground'}`}>{r.title}</span>
-                <span className="text-[10px] flex items-center gap-1 mt-0.5 text-muted-foreground">
+                <span className="text-[11px] flex items-center gap-1 mt-0.5 text-muted-foreground">
                   <Clock size={9} /> {new Date(r.createdAt).toLocaleDateString()}
                 </span>
               </div>
@@ -547,11 +616,11 @@ const MeetingAssistant: React.FC = () => {
                   <div className="ios-card p-5 md:p-6 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2 flex items-center gap-2 mb-1">
                       <Settings size={14} className="text-muted-foreground" />
-                      <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">系統參數</h3>
+                      <h3 className="text-[13px] font-semibold uppercase tracking-widest text-muted-foreground">系統參數</h3>
                     </div>
                     {(['subject', 'keywords', 'speakers', 'terminology'] as const).map(field => (
                       <div key={field} className="space-y-1.5">
-                        <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">
+                        <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">
                           {field === 'subject' ? '會議主題' : field === 'keywords' ? '核心關鍵字' : field === 'speakers' ? '出席名單' : '專業術語'}
                         </label>
                         <input type="text" value={localMetadata[field]} onChange={e => handleMetadataChange(field, e.target.value)}
@@ -564,8 +633,8 @@ const MeetingAssistant: React.FC = () => {
                   <div className="ios-card p-5 md:p-6 rounded-2xl">
                     <div className="flex items-center gap-2 mb-4">
                       <Upload size={14} className="text-muted-foreground" />
-                      <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">原始逐字稿</h3>
-                      <span className="text-[10px] ml-auto text-muted-foreground">{localTranscript.length.toLocaleString()} 字</span>
+                      <h3 className="text-[13px] font-semibold uppercase tracking-widest text-muted-foreground">原始逐字稿</h3>
+                      <span className="text-[11px] ml-auto text-muted-foreground">{localTranscript.length.toLocaleString()} 字</span>
                     </div>
                     <textarea value={localTranscript} onChange={e => handleTranscriptChange(e.target.value)}
                       placeholder="在此貼上您的會議逐字稿..."
@@ -592,19 +661,19 @@ const MeetingAssistant: React.FC = () => {
                         <h3 className="text-base font-semibold tracking-tight text-foreground">校正版本</h3>
                       </div>
                       <div className="flex items-center gap-2.5 flex-wrap">
-                        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
                           <History size={10} /><span>版本歷史</span>
                         </div>
                         <VersionPaginator total={transcriptVersions.length} current={activeTranscriptVersion} onChange={setActiveTranscriptVersion} />
                         <button onClick={() => copyToClipboard(currentTranscriptVersion?.correctedTranscript || '', 'corr')}
-                          className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest px-3.5 py-2 rounded-xl transition-all active:scale-95 ios-btn-secondary text-muted-foreground">
+                          className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest px-3.5 py-2 rounded-xl transition-all active:scale-95 ios-btn-secondary text-muted-foreground">
                           {copiedId === 'corr' ? <Check size={12} /> : <Copy size={12} />}
                           {copiedId === 'corr' ? '已複製' : '複製'}
                         </button>
                       </div>
                     </div>
                     {currentTranscriptVersion && (
-                      <p className="text-[10px] mb-3 text-muted-foreground">
+                      <p className="text-[11px] mb-3 text-muted-foreground">
                         版本 {currentTranscriptVersion.versionNumber} · {new Date(currentTranscriptVersion.createdAt).toLocaleString()}
                       </p>
                     )}
@@ -631,9 +700,9 @@ const MeetingAssistant: React.FC = () => {
                   {/* Transcript version selector */}
                   {transcriptVersions.length > 1 && (
                     <div className="flex items-center gap-3 ios-card p-3.5 rounded-xl">
-                      <p className="text-[10px] font-semibold uppercase tracking-widest whitespace-nowrap text-muted-foreground">分析基底</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-widest whitespace-nowrap text-muted-foreground">分析基底</p>
                       <VersionPaginator total={transcriptVersions.length} current={activeTranscriptVersion} onChange={setActiveTranscriptVersion} />
-                      <span className="text-xs text-muted-foreground">校正版本 {activeTranscriptVersion}</span>
+                      <span className="text-[13px] text-muted-foreground">校正版本 {activeTranscriptVersion}</span>
                     </div>
                   )}
 
@@ -711,25 +780,25 @@ const MeetingAssistant: React.FC = () => {
                               {/* Module header */}
                               <div className="px-5 py-3.5 border-b border-border flex flex-col md:flex-row justify-between md:items-center gap-2.5 bg-muted/20">
                                 <div className="flex items-center gap-2">
-                                  {activeVer && <p className="text-[10px] text-muted-foreground">版本 {activeVer.versionNumber} · {new Date(activeVer.createdAt).toLocaleString()}</p>}
+                                  {activeVer && <p className="text-[11px] text-muted-foreground">版本 {activeVer.versionNumber} · {new Date(activeVer.createdAt).toLocaleString()}</p>}
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap">
                                   {versions.length > 1 && (
-                                    <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                                    <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
                                       <History size={10} />版本
                                     </div>
                                   )}
                                   <VersionPaginator total={versions.length} current={activeVerNum}
                                     onChange={v => setActiveModuleVersion(prev => ({ ...prev, [mId]: v }))} />
                                   <button onClick={() => copyToClipboard(lastAiResponse, copyId)}
-                                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest px-3.5 py-2 rounded-xl transition-all active:scale-95 ios-btn-secondary text-muted-foreground">
+                                    className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest px-3.5 py-2 rounded-xl transition-all active:scale-95 ios-btn-secondary text-muted-foreground">
                                     {copiedId === copyId ? <Check size={11} /> : <Copy size={11} />}
                                     {copiedId === copyId ? '已複製' : 'Copy MD'}
                                   </button>
                                   <button
                                     onClick={() => runInitialAnalysis(mId)}
                                     disabled={isLoading || !currentTranscriptVersion}
-                                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest px-3.5 py-2 rounded-xl transition-all active:scale-95 disabled:opacity-30 ios-btn-secondary text-muted-foreground"
+                                    className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest px-3.5 py-2 rounded-xl transition-all active:scale-95 disabled:opacity-30 ios-btn-secondary text-muted-foreground"
                                   >
                                     <Plus size={11} />新版本
                                   </button>
@@ -744,7 +813,7 @@ const MeetingAssistant: React.FC = () => {
                                       {msg.role === 'user'
                                         ? <p className="font-medium italic text-sm">「{msg.text}」</p>
                                         : <MarkdownRenderer text={msg.text} />}
-                                      <div className="mt-1.5 text-[9px] flex items-center gap-1 opacity-50 text-current">
+                                      <div className="mt-1.5 text-[10px] flex items-center gap-1 opacity-50 text-current">
                                         <Clock size={9} /> {new Date(msg.timestamp).toLocaleTimeString()}
                                       </div>
                                     </div>
@@ -757,7 +826,7 @@ const MeetingAssistant: React.FC = () => {
                                         <div key={i} className="w-1.5 h-1.5 rounded-full animate-bounce bg-primary" style={{ animationDelay: `${i * 0.2}s` }} />
                                       ))}
                                     </div>
-                                    <span className="text-xs text-muted-foreground">AI 思考中...</span>
+                                    <span className="text-[13px] text-muted-foreground">AI 思考中...</span>
                                   </div>
                                 )}
                               </div>
