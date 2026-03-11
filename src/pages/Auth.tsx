@@ -11,13 +11,27 @@ const Auth: React.FC = () => {
   const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [forgotSent, setForgotSent] = useState(false);
+
+  const switchMode = (m: Mode) => {
+    setMode(m);
+    setMessage(null);
+    setForgotSent(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setMessage(null);
     try {
-      if (mode === 'signup') {
+      if (mode === 'forgot') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        setForgotSent(true);
+        setMessage({ type: 'success', text: `重設密碼信已寄至 ${email}，請至信箱查看並點擊連結設定新密碼。` });
+      } else if (mode === 'signup') {
         const { error } = await supabase.auth.signUp({
           email, password,
           options: { data: { display_name: displayName }, emailRedirectTo: window.location.origin },
@@ -51,51 +65,117 @@ const Auth: React.FC = () => {
           <p className="text-sm mt-1.5 text-muted-foreground">AI 驅動的會議深度分析系統</p>
         </div>
 
-        {/* Mode toggle */}
-        <div className="flex mb-6 p-1 rounded-2xl bg-muted gap-1">
-          {(['login', 'signup'] as Mode[]).map(m => (
-            <button key={m} onClick={() => { setMode(m); setMessage(null); }}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold tracking-wide transition-all duration-200 ${mode === m ? 'bg-card shadow-ios-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
-              {m === 'login' ? '登入' : '建立帳號'}
+        {mode === 'forgot' ? (
+          /* ── Forgot Password Panel ── */
+          <div>
+            <div className="ios-glass rounded-3xl p-5 shadow-ios-md mb-4">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="p-2 rounded-xl bg-primary/10">
+                  <Mail size={18} className="text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">重設密碼</p>
+                  <p className="text-[13px] text-muted-foreground">輸入帳號 E-Mail，我們將寄送重設連結</p>
+                </div>
+              </div>
+
+              {!forgotSent ? (
+                <form onSubmit={handleSubmit} className="space-y-3.5">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">電子郵件</label>
+                    <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      className="w-full p-3.5 rounded-xl text-sm ios-input text-foreground placeholder:text-muted-foreground/40" />
+                  </div>
+
+                  {message && (
+                    <div className={`flex items-start gap-2.5 p-3.5 rounded-xl text-sm font-medium border ${message.type === 'error' ? 'bg-destructive/8 border-destructive/20 text-destructive' : 'bg-primary/8 border-primary/20 text-primary'}`}>
+                      {message.type === 'error' ? <AlertCircle size={15} className="shrink-0 mt-0.5" /> : <CheckCircle size={15} className="shrink-0 mt-0.5" />}
+                      {message.text}
+                    </div>
+                  )}
+
+                  <button type="submit" disabled={isLoading}
+                    className="w-full py-3.5 rounded-2xl font-semibold text-sm tracking-tight transition-all active:scale-95 disabled:opacity-40 flex items-center justify-center gap-2 mt-1 ios-btn-primary text-primary-foreground">
+                    {isLoading ? <><Loader2 size={15} className="animate-spin" />傳送中...</> : '發送重設密碼信'}
+                  </button>
+                </form>
+              ) : (
+                <div className="space-y-3">
+                  {message && (
+                    <div className="flex items-start gap-2.5 p-3.5 rounded-xl text-sm font-medium border bg-primary/8 border-primary/20 text-primary">
+                      <CheckCircle size={15} className="shrink-0 mt-0.5" />
+                      {message.text}
+                    </div>
+                  )}
+                  <p className="text-[13px] text-muted-foreground text-center">未收到信件？請檢查垃圾郵件資料夾。</p>
+                </div>
+              )}
+            </div>
+
+            <button onClick={() => switchMode('login')}
+              className="w-full py-2.5 rounded-2xl text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              ← 返回登入
             </button>
-          ))}
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-3.5">
-          {mode === 'signup' && (
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">顯示名稱</label>
-              <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
-                placeholder="您的名稱"
-                className="w-full p-3.5 rounded-xl text-sm ios-input text-foreground placeholder:text-muted-foreground/40" />
-            </div>
-          )}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">電子郵件</label>
-            <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              className="w-full p-3.5 rounded-xl text-sm ios-input text-foreground placeholder:text-muted-foreground/40" />
           </div>
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">密碼</label>
-            <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
-              placeholder="至少 6 位字元" minLength={6}
-              className="w-full p-3.5 rounded-xl text-sm ios-input text-foreground placeholder:text-muted-foreground/40" />
-          </div>
-
-          {message && (
-            <div className={`flex items-start gap-2.5 p-3.5 rounded-xl text-sm font-medium border ${message.type === 'error' ? 'bg-destructive/8 border-destructive/20 text-destructive' : 'bg-primary/8 border-primary/20 text-primary'}`}>
-              {message.type === 'error' ? <AlertCircle size={15} className="shrink-0 mt-0.5" /> : <CheckCircle size={15} className="shrink-0 mt-0.5" />}
-              {message.text}
+        ) : (
+          /* ── Login / Signup Panel ── */
+          <>
+            {/* Mode toggle */}
+            <div className="flex mb-6 p-1 rounded-2xl bg-muted gap-1">
+              {(['login', 'signup'] as Mode[]).map(m => (
+                <button key={m} onClick={() => switchMode(m)}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold tracking-wide transition-all duration-200 ${mode === m ? 'bg-card shadow-ios-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+                  {m === 'login' ? '登入' : '建立帳號'}
+                </button>
+              ))}
             </div>
-          )}
 
-          <button type="submit" disabled={isLoading}
-            className="w-full py-3.5 rounded-2xl font-semibold text-sm tracking-tight transition-all active:scale-95 disabled:opacity-40 flex items-center justify-center gap-2 mt-1 ios-btn-primary text-primary-foreground">
-            {isLoading ? <><Loader2 size={15} className="animate-spin" />處理中...</> : mode === 'login' ? '登入系統' : '建立帳號'}
-          </button>
-        </form>
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-3.5">
+              {mode === 'signup' && (
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">顯示名稱</label>
+                  <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
+                    placeholder="您的名稱"
+                    className="w-full p-3.5 rounded-xl text-sm ios-input text-foreground placeholder:text-muted-foreground/40" />
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">電子郵件</label>
+                <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  className="w-full p-3.5 rounded-xl text-sm ios-input text-foreground placeholder:text-muted-foreground/40" />
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between px-0.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">密碼</label>
+                  {mode === 'login' && (
+                    <button type="button" onClick={() => switchMode('forgot')}
+                      className="text-[13px] text-primary/70 hover:text-primary transition-colors font-medium">
+                      忘記密碼？
+                    </button>
+                  )}
+                </div>
+                <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
+                  placeholder="至少 6 位字元" minLength={6}
+                  className="w-full p-3.5 rounded-xl text-sm ios-input text-foreground placeholder:text-muted-foreground/40" />
+              </div>
+
+              {message && (
+                <div className={`flex items-start gap-2.5 p-3.5 rounded-xl text-sm font-medium border ${message.type === 'error' ? 'bg-destructive/8 border-destructive/20 text-destructive' : 'bg-primary/8 border-primary/20 text-primary'}`}>
+                  {message.type === 'error' ? <AlertCircle size={15} className="shrink-0 mt-0.5" /> : <CheckCircle size={15} className="shrink-0 mt-0.5" />}
+                  {message.text}
+                </div>
+              )}
+
+              <button type="submit" disabled={isLoading}
+                className="w-full py-3.5 rounded-2xl font-semibold text-sm tracking-tight transition-all active:scale-95 disabled:opacity-40 flex items-center justify-center gap-2 mt-1 ios-btn-primary text-primary-foreground">
+                {isLoading ? <><Loader2 size={15} className="animate-spin" />處理中...</> : mode === 'login' ? '登入系統' : '建立帳號'}
+              </button>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );
