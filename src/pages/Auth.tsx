@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { BrainCircuit, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { BrainCircuit, Loader2, AlertCircle, CheckCircle, Mail } from 'lucide-react';
 
-type Mode = 'login' | 'signup';
+type Mode = 'login' | 'signup' | 'forgot';
 
 const Auth: React.FC = () => {
   const [mode, setMode] = useState<Mode>('login');
